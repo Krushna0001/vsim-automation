@@ -1,0 +1,59 @@
+---
+# playbook.yml - Ansible equivalent of steps 01 and 02 (packages + networking).
+# Run:  ansible-playbook -i inventory.ini playbook.yml --ask-become-pass
+# Dry run:  add --check
+- name: Configure virtual simulation platform host
+  hosts: vsim
+  become: true
+  vars:
+    hosts_entry_name: vsim.local
+    base_packages: [ca-certificates, curl, git, jq, iproute2, iptables, docker.io]
+
+  tasks:
+    - name: Install base packages and Docker
+      ansible.builtin.apt:
+        name: "{{ base_packages }}"
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+      register: pkg_result
+      retries: 3
+      delay: 5
+      until: pkg_result is succeeded
+
+    - name: Ensure Docker is running and enabled
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Load br_netfilter now and on boot
+      community.general.modprobe:
+        name: br_netfilter
+        state: present
+        persistent: present
+      ignore_errors: true      # not available inside some containers / WSL
+
+    - name: Kernel networking parameters for Kubernetes
+      ansible.posix.sysctl:
+        name: "{{ item }}"
+        value: "1"
+        sysctl_file: /etc/sysctl.d/99-vsim.conf
+        reload: true
+        state: present
+      loop:
+        - net.ipv4.ip_forward
+        - net.bridge.bridge-nf-call-iptables
+        - net.bridge.bridge-nf-call-ip6tables
+      ignore_errors: true
+
+    - name: Local DNS entry for the platform
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        line: "127.0.0.1 {{ hosts_entry_name }}"
+        backup: true
+        state: present
+
+    - name: Next step hint
+      ansible.builtin.debug:
+        msg: "Run ../setup.sh --skip-install --skip-network to create the cluster and apply k8s/*.yaml"

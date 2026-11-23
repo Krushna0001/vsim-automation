@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: vsim-web
+  namespace: __NAMESPACE__
+spec:
+  type: NodePort
+  selector: { app: vsim-web }
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: __NODE_PORT__

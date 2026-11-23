@@ -1,0 +1,9 @@
+# Simulated platform landing page served by nginx.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vsim-web-content
+  namespace: __NAMESPACE__
+data:
+  index.html: |
+    <html><body><h1>Virtual Simulation Platform</h1><p>Environment is up.</p></body></html>

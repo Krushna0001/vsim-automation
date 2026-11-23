@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vsim-web
+  namespace: __NAMESPACE__
+  labels: { app: vsim-web }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: vsim-web }
+  template:
+    metadata:
+      labels: { app: vsim-web }
+    spec:
+      containers:
+        - name: web
+          image: nginx:1.27-alpine
+          ports: [{ containerPort: 80 }]
+          resources:                      # bounded resources = predictable behaviour
+            requests: { cpu: 50m, memory: 32Mi }
+            limits:   { cpu: 200m, memory: 128Mi }
+          readinessProbe:
+            httpGet: { path: /, port: 80 }
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /, port: 80 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - { name: content, mountPath: /usr/share/nginx/html }
+      volumes:
+        - name: content
+          configMap: { name: vsim-web-content }
